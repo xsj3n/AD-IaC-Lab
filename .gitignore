@@ -1,0 +1,15 @@
+# local terraform dirs
+.terraform/
+
+*unattend.xml
+
+crash.log
+crash.*.log
+
+configuration/ipinfo*
+configuration/collections
+
+
+.terraform.tfstate.lock.info
+.terraformrc
+terraform.rc
