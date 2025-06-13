@@ -1,8 +1,0 @@
-- name: upgrade
-  hosts: all
-  var_files:
-    - vars/creds.secret.yml 
-  
-  tasks:
-    - name: ping
-      ansible.windows.win_ping:

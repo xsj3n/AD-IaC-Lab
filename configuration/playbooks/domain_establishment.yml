@@ -1,0 +1,54 @@
+- name: Establish Domain
+  hosts: terraform-windows-2025-0
+  vars_files:
+    - ../vars/creds.secret.yml
+    - ../vars/domain_vars.yml
+  tasks:
+    - name: Connectivity check
+      ansible.windows.win_ping:
+
+    - name: DNS Configuration
+      ansible.windows.win_dns_client:
+        adapter_names: "*"
+        dns_servers:
+          - "{{ hostvars['terraform-windows-2025-1']['ansible_host'] }}"
+          - "{{ hostvars['terraform-windows-2025-0']['ansible_host'] }}"
+        
+
+    - name: Domain Establishment
+      microsoft.ad.domain:
+        dns_domain_name: "{{ domain }}"
+        domain_mode: Win2025
+        forest_mode: Win2025
+        domain_netbios_name: xslabs
+        install_dns: true
+        reboot: true
+        safe_mode_password: "{{ dsrm_password }}"
+
+
+
+- name: DC Promotion
+  hosts: terraform-windows-2025-1
+  vars_files:
+    - ../vars/creds.secret.yml
+    - ../vars/domain_vars.yml
+  tasks:
+    - name: Connectivity Check
+      ansible.windows.win_ping:
+
+    - name: DNS Configuration
+      ansible.windows.win_dns_client:
+        adapter_names: "*"
+        dns_servers:
+          - "{{ hostvars['terraform-windows-2025-0']['ansible_host'] }}"
+          - "{{ hostvars['terraform-windows-2025-1']['ansible_host'] }}"
+
+    - name: Promote Server into DC
+      microsoft.ad.domain_controller:
+        state: "domain_controller"
+        dns_domain_name: "{{ domain }}"
+        domain_admin_user: "Administrator@{{ domain }}"
+        domain_admin_password: "{{ default_dc_password }}"
+        safe_mode_password: "{{ dsrm_password }}"
+        install_dns: true
+        reboot: true
