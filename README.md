@@ -3,7 +3,7 @@
 
 This repository contains a Terraform and Ansible project to deploy two domain controllers on Proxmox. It also contains a Nix flake I used to manage my local environment on NixOS.
 
-The `bin/proxmox_terraform_setup.sh` is also provided to automation the configuration of Proxmox in prepartion of use with Terraform. 
+The `bin/proxmox_terraform_setup.sh` script is also provided to automation the configuration of Proxmox in prepartion of use with Terraform. 
 
 ## Requirements
 
