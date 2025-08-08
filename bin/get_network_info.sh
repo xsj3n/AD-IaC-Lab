@@ -1,13 +1,15 @@
 token="$1"
 id="$2"
 ip=""
-cfg_file="./configuration/ipinfo.cfg"
+ip6=""
+cfg_file="$3"
 
 echo "Awaiting IP for VM $id"
 while [ -z "$ip" ]; do
-   ip=$(curl -s -k -H "Authorization: PVEAPIToken=$token" \
-   "https://192.168.0.86:8006/api2/json/nodes/phv/qemu/$id/agent/network-get-interfaces" | \
-   jq -r '.data.result[0]."ip-addresses"[3] | select(."ip-address-type" == "ipv4") | ."ip-address"')
+   response=$(curl -s -k -H "Authorization: PVEAPIToken=$token" \
+   "https://192.168.0.86:8006/api2/json/nodes/pve0/qemu/$id/agent/network-get-interfaces")
+   ip=$(echo "$response" | jq -r '.data.result[0]."ip-addresses"[3] | select(."ip-address-type" == "ipv4") | ."ip-address"')
+   ip6=$(echo "$response" | jq -r '.data.result[0]."ip-addresses"[0] | select(."ip-address-type" == "ipv6") | ."ip-address"')
    [[ ${ip:0:3} -eq 169 ]] && ip=""
    sleep 10
 done
@@ -17,8 +19,9 @@ echo "Found VM $id IP: $ip"
 # id_array & ip_array len should be equal
 json=$(jq -n \
    --arg id "$id" \
-   --arg ip "$ip" \
-   '{id: $id, ip: $ip}')
+   --arg ip "$ip"  \
+   --arg ip6 "$ip6" \
+   '{id: $id, ip: $ip, ip6: $ip6}')
 
 
 

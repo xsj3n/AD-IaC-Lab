@@ -2,18 +2,18 @@ resource "proxmox_virtual_environment_vm" "windows_2025_dc" {
   count       = 2
   name        = "terraform-windows-2025-${count.index}"
   description = "Terraform managed domain controllers"
-  node_name   = "phv"
+  node_name   = "pve0"
 
-  vm_id = count.index + 200
+  vm_id = var.vm_ids[count.index]
   bios  = "ovmf"
 
   clone {
-    vm_id = 105
+    vm_id = var.clone_id
     full  = false
   }
 
   cpu {
-    cores = 3
+    cores = var.cpu_cores
     type  = "host"
   }
 
@@ -26,8 +26,8 @@ resource "proxmox_virtual_environment_vm" "windows_2025_dc" {
 
 
   memory {
-    dedicated = 4048
-    floating  = 4048 # set equal to dedicated to enable ballooning
+    dedicated = var.memory
+    floating  = var.memory # set equal to dedicated to enable ballooning
   }
 
   network_device {
@@ -37,30 +37,35 @@ resource "proxmox_virtual_environment_vm" "windows_2025_dc" {
     firewall = true
   }
 
-  initialization {
-    datastore_id = "local-zfs"
-  }
-
-
   provisioner "local-exec" {
-    command = "./bin/get_network_info.sh ${var.api_token} ${count.index + 200}"
+    command = "./bin/get_network_info.sh ${var.api_token} ${count.index + 200} ${local.ip_info_path}"
   }
 
 }
 
-# we read the contents of file produced by the get_network_info script so
-# terraform can manage it, less cleanup
-resource "local_file" "ip_info" {
-  filename   = "./configuration/ipinfo_managed.cfg"
-  source     = "./configuration/ipinfo.cfg"
+# Copy the JSON file produced by the script so Terraform can considered a managed resource
+resource "local_file" "ip_info_file" {
+  filename   = local.ip_info_path
+  source     = local.ip_info_path
   depends_on = [proxmox_virtual_environment_vm.windows_2025_dc]
 
-  provisioner "local-exec" {
-    command = "rm ./configuration/ipinfo.cfg"
+  lifecycle {
+    ignore_changes = all
   }
 }
 
-# exposes the contents of the ip_info file to the rest of terraform 
+
+# Exposes the contents of the ip_info file to the rest of terraform
 data "local_file" "ip_info" {
-  filename = local_file.ip_info.filename
+  filename = local_file.ip_info_file.filename
 }
+
+# Removes the IP information file once the deployment is done
+resource "null_resource" "remove_ip_file" {
+  depends_on = [null_resource.ansible_dc_promo_playbook]
+
+  provisioner "local-exec" {
+    command = "rm -f ${local.ip_info_path}"
+  }
+}
+

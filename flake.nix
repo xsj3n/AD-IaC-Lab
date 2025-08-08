@@ -28,14 +28,10 @@
       gh
     ] ++ [ bsecret.packages.${system}.default ] ;
     shellHook = ''
-      shopt -s nullglob
       terraform init
       if [[ ! -d ./configuration/collections ]]; then
-        ansible-galaxy install -r configuration/requirements.yml -p configuration/requirements.yml
+        ansible-galaxy collection install -r ./configuration/requirements.yml -p ./configuration/collections
       fi
-
-      trap "./bin/encrypt.sh" EXIT 
-      ./bin/decrypt.sh
     '';
   in
   {

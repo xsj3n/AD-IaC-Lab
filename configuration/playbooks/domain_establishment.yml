@@ -1,54 +1,91 @@
-- name: Establish Domain
-  hosts: terraform-windows-2025-0
-  vars_files:
-    - ../vars/creds.secret.yml
-    - ../vars/domain_vars.yml
+- name: Change Server Hostnames 
+  hosts: all
   tasks:
-    - name: Connectivity check
-      ansible.windows.win_ping:
+    
+    - name: Hostname Change
+      ansible.windows.win_hostname:
+        name: "{{ (inventory_hostname == hostvars[dc_0]['inventory_hostname']) | ternary('DC_0', 'DC_1') }}"
+      register: result
 
-    - name: DNS Configuration
-      ansible.windows.win_dns_client:
-        adapter_names: "*"
-        dns_servers:
-          - "{{ hostvars['terraform-windows-2025-1']['ansible_host'] }}"
-          - "{{ hostvars['terraform-windows-2025-0']['ansible_host'] }}"
-        
+    - name: Reboot if Required
+      ansible.windows.win_reboot:
+      when: result.reboot_required
 
+
+- name: DC_0 Promotion to Domain Controller | Forest Establishment
+  hosts: "{{ dc_0 }}"
+  tasks:
+               
     - name: Domain Establishment
       microsoft.ad.domain:
-        dns_domain_name: "{{ domain }}"
+        dns_domain_name: "{{ hostvars[dc_0]['domain'] }}"
         domain_mode: Win2025
         forest_mode: Win2025
-        domain_netbios_name: xslabs
+        domain_netbios_name: "{{ hostvars[dc_0]['netbios'] }}"
         install_dns: true
         reboot: true
-        safe_mode_password: "{{ dsrm_password }}"
+        safe_mode_password: "{{ hostvars[dc_0]['dsrm'] }}"
 
 
 
-- name: DC Promotion
-  hosts: terraform-windows-2025-1
-  vars_files:
-    - ../vars/creds.secret.yml
-    - ../vars/domain_vars.yml
+- name: DC_1 Promotion to Domain Controller
+  hosts: "{{ dc_1 }}"
   tasks:
-    - name: Connectivity Check
-      ansible.windows.win_ping:
 
-    - name: DNS Configuration
+    - name: DNS Client Preferred Server Address Configuration
       ansible.windows.win_dns_client:
-        adapter_names: "*"
+        adapter_names: "Ethernet"
         dns_servers:
-          - "{{ hostvars['terraform-windows-2025-0']['ansible_host'] }}"
-          - "{{ hostvars['terraform-windows-2025-1']['ansible_host'] }}"
-
+          - "{{ hostvars[dc_0]['ansible_host']}}"
+          - "{{ hostvars[dc_0]['ansible_host6']}}"      
+                 
     - name: Promote Server into DC
       microsoft.ad.domain_controller:
         state: "domain_controller"
-        dns_domain_name: "{{ domain }}"
-        domain_admin_user: "Administrator@{{ domain }}"
-        domain_admin_password: "{{ default_dc_password }}"
-        safe_mode_password: "{{ dsrm_password }}"
+        dns_domain_name: "{{ hostvars[dc_0]['domain'] }}"
+        domain_admin_user: "Administrator@{{ hostvars[dc_0]['domain'] }}"
+        domain_admin_password: "{{ hostvars[dc_0]['ansible_password'] }}"
+        safe_mode_password: "{{ hostvars[dc_0]['dsrm'] }}"
         install_dns: true
         reboot: true
+
+
+- name: Prepare DC_0 for DNS Configuration
+  hosts: "{{ dc_1 }}"
+  tasks:
+    
+    - name: Register Command
+      ansible.windows.win_shell: "ipconfig /registerdns"
+
+    - name: Wait 15m for Replication
+      ansible.builtin.pause:
+        minutes: 15
+
+    - name: Push Replication across Forest
+      ansible.windows.win_shell: "repadmin /syncall /A"
+
+- name: Post Domain Establishment DC_0 DNS Configuration
+  hosts: "{{ dc_0 }}" 
+  tasks: 
+
+    - name: DNS Client Preferred Server Address Configuration        
+      ansible.windows.win_dns_client:
+        adapter_names: "Ethernet"
+        dns_servers:
+          - "127.0.0.1"
+          - "{{ hostvars[dc_1]['ansible_host'] }}"
+          - "::1"
+          - "{{ hostvars[dc_1]['ansible_host6'] }}"
+
+- name: Post Domain Establishment DC_1 DNS Configuration
+  hosts: "{{ dc_1 }}" 
+  tasks: 
+
+    - name: DNS Client Preferred Server Address Configuration        
+      ansible.windows.win_dns_client:
+        adapter_names: "Ethernet"
+        dns_servers:
+          - "127.0.0.1"
+          - "{{ hostvars[dc_0]['ansible_host'] }}"
+          - "::1"
+          - "{{ hostvars[dc_0]['ansible_host6'] }}"
