@@ -9,7 +9,8 @@ crash.*.log
 configuration/ipinfo*
 configuration/collections
 
-
+*ansible_dependencies*
+*ansible_collections*
 .terraform.tfstate.lock.info
 .terraformrc
 terraform.rc

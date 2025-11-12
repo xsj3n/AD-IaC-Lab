@@ -1,0 +1,118 @@
+- name: Configure Core Interfaces
+  hosts: core_switches
+  tasks:
+
+    - name: Replace /etc/network/interfaces file
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces
+        content: |
+          auto lo
+          iface lo inet loopback
+          iface lo inet6 loopback
+
+          auto eth-cfg
+          iface eth-cfg inet static
+              address {{ hostvars[inventory_hostname]['ansible_host'] }}
+
+          auto br0
+          iface br0 inet manual
+              bridge-ports eth-uplink eth-downlink
+              bridge-stp off
+              bridge-fd 0
+              post-up echo 1 > /sys/class/net/br0/bridge/vlan_filtering
+              post-up echo 1 > /proc/sys/net/ipv4/ip_forward
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan20_id'] }} dev br0 self
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan20_id'] }} dev eth-downlink
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan40_id'] }} dev br0 self
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan40_id'] }} dev eth-downlink
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan60_id'] }} dev br0 self
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan60_id'] }} dev eth-downlink
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan80_id'] }} dev br0 self 
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan80_id'] }} dev eth-downlink
+
+          auto br0.10
+          iface br0.10 inet static
+              address {{ hostvars[inventory_hostname]['core_vlan_mgmt_ip'] }}
+
+          auto br0.20
+          iface br0.20 inet static
+              address {{ hostvars[inventory_hostname]['core_vlan_20_ip'] }}
+
+          auto br0.40
+          iface br0.40 inet static
+              address {{ hostvars[inventory_hostname]['core_vlan_40_ip'] }}
+
+          auto br0.60
+          iface br0.60 inet static
+              address {{ hostvars[inventory_hostname]['core_vlan_60_ip'] }}
+
+          auto br0.80
+          iface br0.80 inet static
+              address {{ hostvars[inventory_hostname]['core_vlan_80_ip'] }}
+      
+    - name: Restart
+      ansible.builtin.reboot:
+      
+- name: Configure Distribution Interfaces
+  hosts: distribution_switches
+  tasks:
+    - name: Replace /etc/network/interfaces file
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces
+        content: |
+          auto lo
+          iface lo inet loopback
+          iface lo inet6 loopback
+
+          auto eth-cfg
+          iface eth-cfg inet static
+              address {{ hostvars[inventory_hostname]['ansible_host'] }}
+
+          auto br0
+          iface br0 inet manual
+              bridge-ports eth-uplink eth-downlink
+              bridge-stp off
+              bridge-fd 0
+              post-up echo 1 > /sys/class/net/br0/bridge/vlan_filtering
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan0_id'] }} dev eth-uplink
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan0_id'] }} dev eth-downlink
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan1_id'] }} dev eth-uplink
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['vlan1_id'] }} dev eth-downlink
+
+          auto br0.10
+          iface br0.10 inet static 
+              address {{ hostvars[inventory_hostname]['distr_vlan_mgmt_ip'] }}          
+
+    - name: Restart
+      ansible.builtin.reboot:
+
+- name: Configure Access Interfaces
+  hosts: access_switches
+  tasks:
+    - name: Replace /etc/network/interfaces file
+      ansible.builtin.copy:
+        dest: /etc/network/interfaces
+        content: |
+          auto lo
+          iface lo inet loopback
+          iface lo inet6 loopback
+
+          auto eth-cfg
+          iface eth-cfg inet static
+              address {{ hostvars[inventory_hostname]['ansible_host'] }}
+
+          auto br0
+          iface br0 inet static
+              bridge-ports eth-uplink eth-downlink
+              bridge-stp off
+              bridge-fd 0
+              post-up echo 1 > /sys/class/net/br0/bridge/vlan_filtering
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['access_port_vlan'] }} dev eth-downlink pvid untagged
+              post-up bridge vlan add vid {{ hostvars[inventory_hostname]['access_port_vlan'] }} dev eth-uplink
+
+          auto br0.10
+          iface br0.10 inet static
+              address {{ hostvars[inventory_hostname]['access_vlan_mgmt_ip'] }}
+                  
+    - name: Restart
+      ansible.builtin.reboot:

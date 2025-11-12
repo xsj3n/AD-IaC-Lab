@@ -1,0 +1,19 @@
+auto lo
+iface lo inet loopback
+iface lo inet6 loopback
+
+auto eth0
+iface eth0 inet dhcp
+hostname $(hostname)
+
+auto eth-cfg
+iface eth-cfg inet static
+	address 192.168.0.245/24
+
+
+auto br0
+iface br0 inet manual
+	bridge-vlan-aware yes
+	bridge-ports eth-uplink eth-downlink
+	bridge-stp on
+	bridge-fd 0

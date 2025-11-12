@@ -1,0 +1,5 @@
+api_token            = "terraform@pve!provider=ed5919f0-eb63-4dd5-a6cd-92f3446e1a1c"
+pve_ssh_passwd       = "8ec5f2cc-bb17-4555-b6be-0b7b"
+windows_ssh_password = "c$7S$x1hRGlLJ@"
+dsrm_password        = "8ejeJJA%AQ#*K2!4h#"
+

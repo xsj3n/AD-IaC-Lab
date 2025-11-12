@@ -21,6 +21,7 @@
       terraform-ls
       ansible
       packer
+      sops
       jq
       sshpass
       libuuid
@@ -28,10 +29,10 @@
       gh
     ] ++ [ bsecret.packages.${system}.default ] ;
     shellHook = ''
-      terraform init
-      if [[ ! -d ./configuration/collections ]]; then
-        ansible-galaxy collection install -r ./configuration/requirements.yml -p ./configuration/collections
-      fi
+      #terraform init
+      #if [[ ! -d ./configuration/collections ]]; then
+       # ansible-galaxy collection install -r ./configuration/requirements.yml -p ./configuration/collections
+      #fi
     '';
   in
   {
