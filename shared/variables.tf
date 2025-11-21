@@ -11,5 +11,5 @@ output "ve_ip" {
 }
 
 output "secrets" {
-  value = jsondecode(file("${path.module}/.secrets.json"))
+  value = jsondecode(file("${path.module}/secrets.json"))
 }
